@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Videx</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
+    #loginScreen, #mainApp { max-width: 600px; margin: auto; }
+    input, button { margin: 5px 0; padding: 8px; width: 100%; }
+    .post { background: #fff; padding: 10px; margin: 5px 0; border-radius: 5px; }
+    h2 { text-align: center; }
+  </style>
+</head>
+<body>
+  <div id="loginScreen">
+    <h2>Login / Signup</h2>
+    <input id="name" placeholder="Name"><br>
+    <input id="email" placeholder="Email"><br>
+    <input id="password" type="password" placeholder="Password"><br>
+    <button onclick="signup()">Signup</button>
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div id="mainApp" style="display:none;">
+    <h2>Videx Feed</h2>
+    <button onclick="showPostForm()">New Post</button>
+    <div id="feed"></div>
+  </div>
+
+<script type="module">
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+  // ✅ Your Supabase project details
+  const supabaseUrl = "https://btpeyadbqscxejitjopi.supabase.co";   
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0cGV5YWRicXNjeGVqaXRqb3BpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzgyMjM5NCwiZXhwIjoyMDc5Mzk4Mzk0fQ.uAg3rEnyF7WJAM20rhax2LQp1lL2sBwKb2QipVvXi-g"; 
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  let currentUserName = "";
+
+  async function signup() {
+    const name = document.getElementById("name").value;
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (!error) {
+      currentUserName = name;
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("mainApp").style.display = "block";
+      loadPosts();
+    } else {
+      alert(error.message);
+    }
+  }
+
+  async function login() {
+    const name = document.getElementById("name").value;
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error) {
+      currentUserName = name;
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("mainApp").style.display = "block";
+      loadPosts();
+    } else {
+      alert(error.message);
+    }
+  }
+
+  async function showPostForm() {
+    const postText = prompt("Write your post:");
+    if (postText) {
+      await supabase.from("posts").insert([
+        { username: currentUserName, text: postText, timestamp: Date.now() }
+      ]);
+    }
+  }
+
+  async function loadPosts() {
+    const { data } = await supabase.from("posts")
+      .select("*")
+      .order("timestamp", { ascending: false })
+      .limit(50);
+    const feed = document.getElementById("feed");
+    feed.innerHTML = "";
+    data.forEach(post => {
+      const div = document.createElement("div");
+      div.className = "post";
+      div.innerHTML = `<strong>${post.username}:</strong> ${post.text}`;
+      feed.appendChild(div);
+    });
+  }
+
+  // 🔄 Realtime subscription: new posts appear instantly
+  supabase.channel("posts")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, payload => {
+      const post = payload.new;
+      const feed = document.getElementById("feed");
+      const div = document.createElement("div");
+      div.className = "post";
+      div.innerHTML = `<strong>${post.username}:</strong> ${post.text}`;
+      feed.insertBefore(div, feed.firstChild);
+    })
+    .subscribe();
+</script>
+</body>
+</html>
