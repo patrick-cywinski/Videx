@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Videx Login</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+    #loginBox { max-width: 420px; margin: auto; text-align: center; }
+    input, button { margin: 10px 0; padding: 10px; width: 100%; box-sizing: border-box; }
+    .error { color: #b00020; margin-top: 8px; display:none; }
+  </style>
+</head>
+<body>
+  <div id="loginBox">
+    <h2>Welcome to Videx</h2>
+    <input id="nameInput" placeholder="Enter your name" />
+    <button id="okBtn">OK</button>
+    <div id="errorBox" class="error"></div>
+  </div>
+
+<script>
+  const okBtn = document.getElementById("okBtn");
+  const nameInput = document.getElementById("nameInput");
+  const errorBox = document.getElementById("errorBox");
+
+  okBtn.addEventListener("click", () => {
+    const name = (nameInput.value || "").trim();
+    if (!name) {
+      errorBox.textContent = "Please enter a name.";
+      errorBox.style.display = "block";
+      return;
+    }
+    try {
+      localStorage.setItem("videxName", name);
+      window.location.href = "feed.html"; // navigate to feed
+    } catch (e) {
+      errorBox.textContent = "Could not save your name. Try another browser.";
+      errorBox.style.display = "block";
+      console.error("localStorage error:", e);
+    }
+  });
+</script>
+</body>
+</html>
+
