@@ -2,27 +2,29 @@
 <html>
 <head>
   <title>Videx</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
-    #loginScreen, #mainApp { max-width: 600px; margin: auto; }
-    input, button { margin: 5px 0; padding: 8px; width: 100%; }
-    .post { background: #fff; padding: 10px; margin: 5px 0; border-radius: 5px; }
+    #nameScreen, #mainApp { max-width: 600px; margin: auto; }
+    input, button, textarea { margin: 6px 0; padding: 10px; width: 100%; box-sizing: border-box; }
+    .post { background: #fff; padding: 10px; margin: 6px 0; border-radius: 6px; border: 1px solid #ddd; }
     h2 { text-align: center; }
   </style>
 </head>
 <body>
-  <div id="loginScreen">
-    <h2>Login / Signup</h2>
-    <input id="name" placeholder="Name"><br>
-    <input id="email" placeholder="Email"><br>
-    <input id="password" type="password" placeholder="Password"><br>
-    <button onclick="signup()">Signup</button>
-    <button onclick="login()">Login</button>
+  <!-- Step 1: Ask for name -->
+  <div id="nameScreen">
+    <h2>Welcome to Videx</h2>
+    <input id="nameInput" placeholder="Enter your name"><br>
+    <button onclick="enterFeed()">OK</button>
   </div>
 
+  <!-- Step 2: Feed -->
   <div id="mainApp" style="display:none;">
-    <h2>Videx!</h2>
-    <button onclick="showPostForm()">New Post</button>
+    <h2>Videx Feed</h2>
+    <textarea id="postText" rows="3" placeholder="Write a post..."></textarea>
+    <button onclick="makePost()">Post</button>
     <div id="feed"></div>
   </div>
 
@@ -36,46 +38,32 @@
 
   let currentUserName = "";
 
-  async function signup() {
-    const name = document.getElementById("name").value;
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      alert(error.message);
+  function enterFeed() {
+    const name = document.getElementById("nameInput").value.trim();
+    if (!name) {
+      alert("Please enter a name");
       return;
     }
     currentUserName = name;
-    showApp();
-  }
-
-  async function login() {
-    const name = document.getElementById("name").value;
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      alert(error.message);
-      return;
-    }
-    currentUserName = name;
-    showApp();
-  }
-
-  function showApp() {
-    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("nameScreen").style.display = "none";
     document.getElementById("mainApp").style.display = "block";
     loadPosts();
     subscribeToPosts();
   }
 
-  async function showPostForm() {
-    const postText = prompt("Write your post:");
-    if (postText) {
-      const { error } = await supabase.from("posts").insert([
-        { username: currentUserName, text: postText, timestamp: Date.now() }
-      ]);
-      if (error) alert(error.message);
+  async function makePost() {
+    const text = document.getElementById("postText").value.trim();
+    if (!text) {
+      alert("Please write something before posting");
+      return;
+    }
+    const { error } = await supabase.from("posts").insert([
+      { username: currentUserName, text, timestamp: Date.now() }
+    ]);
+    if (error) {
+      alert("Error posting: " + error.message);
+    } else {
+      document.getElementById("postText").value = "";
     }
   }
 
@@ -85,7 +73,7 @@
       .order("timestamp", { ascending: false })
       .limit(50);
     if (error) {
-      alert(error.message);
+      alert("Error loading posts: " + error.message);
       return;
     }
     const feed = document.getElementById("feed");
@@ -113,7 +101,3 @@
 </script>
 </body>
 </html>
-
-
-
-
