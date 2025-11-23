@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Videx Feed</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
+    #mainApp { max-width: 600px; margin: auto; }
+    textarea, button { margin: 6px 0; padding: 10px; width: 100%; box-sizing: border-box; }
+    .post { background: #fff; padding: 10px; margin: 6px 0; border-radius: 6px; border: 1px solid #ddd; }
+    h2 { text-align: center; }
+  </style>
+</head>
+<body>
+  <div id="mainApp">
+    <h2>Videx Feed</h2>
+    <textarea id="postText" rows="3" placeholder="Write a post..."></textarea>
+    <button onclick="makePost()">Post</button>
+    <div id="feed"></div>
+  </div>
+
+<script type="module">
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+  // ✅ Your Supabase project details
+  const supabaseUrl = "https://btpeyadbqscxejitjopi.supabase.co";   
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0cGV5YWRicXNjeGVqaXRqb3BpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzgyMjM5NCwiZXhwIjoyMDc5Mzk4Mzk0fQ.uAg3rEnyF7WJAM20rhax2LQp1lL2sBwKb2QipVvXi-g"; 
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const currentUserName = localStorage.getItem("videxName") || "Anonymous";
+
+  async function makePost() {
+    const text = document.getElementById("postText").value.trim();
+    if (!text) {
+      alert("Please write something before posting");
+      return;
+    }
+    const { error } = await supabase.from("posts").insert([
+      { username: currentUserName, text, timestamp: Date.now() }
+    ]);
+    if (error) {
+      alert("Error posting: " + error.message);
+    } else {
+      document.getElementById("postText").value = "";
+    }
+  }
+
+  async function loadPosts() {
+    const { data, error } = await supabase.from("posts")
+      .select("*")
+      .order("timestamp", { ascending: false })
+      .limit(50);
+    if (error) {
+      alert("Error loading posts: " + error.message);
+      return;
+    }
+    const feed = document.getElementById("feed");
+    feed.innerHTML = "";
+    data.forEach(post => {
+      const div = document.createElement("div");
+      div.className = "post";
+      div.innerHTML = `<strong>${post.username}:</strong> ${post.text}`;
+      feed.appendChild(div);
+    });
+  }
+
+  function subscribeToPosts() {
+    supabase.channel("posts")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, payload => {
+        const post = payload.new;
+        const feed = document.getElementById("feed");
+        const div = document.createElement("div");
+        div.className = "post";
+        div.innerHTML = `<strong>${post.username}:</strong> ${post.text}`;
+        feed.insertBefore(div, feed.firstChild);
+      })
+      .subscribe();
+  }
+
+  // Initial load
+  loadPosts();
+  subscribeToPosts();
+</script>
+</body>
+</html>
