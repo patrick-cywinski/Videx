@@ -21,7 +21,7 @@
   </div>
 
   <div id="mainApp" style="display:none;">
-    <h2>Videx Feed</h2>
+    <h2>Videx!</h2>
     <button onclick="showPostForm()">New Post</button>
     <div id="feed"></div>
   </div>
@@ -40,46 +40,54 @@
     const name = document.getElementById("name").value;
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (!error) {
-      currentUserName = name;
-      document.getElementById("loginScreen").style.display = "none";
-      document.getElementById("mainApp").style.display = "block";
-      loadPosts();
-    } else {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) {
       alert(error.message);
+      return;
     }
+    currentUserName = name;
+    showApp();
   }
 
   async function login() {
     const name = document.getElementById("name").value;
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (!error) {
-      currentUserName = name;
-      document.getElementById("loginScreen").style.display = "none";
-      document.getElementById("mainApp").style.display = "block";
-      loadPosts();
-    } else {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
       alert(error.message);
+      return;
     }
+    currentUserName = name;
+    showApp();
+  }
+
+  function showApp() {
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("mainApp").style.display = "block";
+    loadPosts();
+    subscribeToPosts();
   }
 
   async function showPostForm() {
     const postText = prompt("Write your post:");
     if (postText) {
-      await supabase.from("posts").insert([
+      const { error } = await supabase.from("posts").insert([
         { username: currentUserName, text: postText, timestamp: Date.now() }
       ]);
+      if (error) alert(error.message);
     }
   }
 
   async function loadPosts() {
-    const { data } = await supabase.from("posts")
+    const { data, error } = await supabase.from("posts")
       .select("*")
       .order("timestamp", { ascending: false })
       .limit(50);
+    if (error) {
+      alert(error.message);
+      return;
+    }
     const feed = document.getElementById("feed");
     feed.innerHTML = "";
     data.forEach(post => {
@@ -90,17 +98,21 @@
     });
   }
 
-  // 🔄 Realtime subscription: new posts appear instantly
-  supabase.channel("posts")
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, payload => {
-      const post = payload.new;
-      const feed = document.getElementById("feed");
-      const div = document.createElement("div");
-      div.className = "post";
-      div.innerHTML = `<strong>${post.username}:</strong> ${post.text}`;
-      feed.insertBefore(div, feed.firstChild);
-    })
-    .subscribe();
+  function subscribeToPosts() {
+    supabase.channel("posts")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, payload => {
+        const post = payload.new;
+        const feed = document.getElementById("feed");
+        const div = document.createElement("div");
+        div.className = "post";
+        div.innerHTML = `<strong>${post.username}:</strong> ${post.text}`;
+        feed.insertBefore(div, feed.firstChild);
+      })
+      .subscribe();
+  }
 </script>
 </body>
 </html>
+
+
+
