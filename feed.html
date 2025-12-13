@@ -1,152 +1,94 @@
 <!DOCTYPE html>
-<html> 
-
+<html>
 <head>
-  <title>Videx!</title>
+  <title>Videx Feed</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
     #mainApp { max-width: 700px; margin: auto; }
-    textarea, button, input { margin: 6px 0; padding: 10px; width: 100%; box-sizing: border-box; }
+    textarea, button, input { width: 100%; padding: 10px; margin: 6px 0; box-sizing: border-box; }
     .row { display: flex; gap: 8px; }
     .row > * { flex: 1; }
-    .post { background: #fff; padding: 10px; margin: 6px 0; border-radius: 6px; border: 1px solid #ddd; }
-    .header { display: flex; justify-content: space-between; align-items: center; }
-    h2 { text-align: center; margin: 8px 0 16px; }
-    .error { color: #b00020; margin: 6px 0; display: none; }
+    .post { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 10px; margin: 6px 0; }
+    .header { display:flex; justify-content:space-between; }
+    .error { color: #b00020; display:none; }
   </style>
 </head>
 <body>
-  <div id="mainApp">
-    <h2>Videx!</h2>
-
-    <div class="row">
-      <input id="nameDisplay" readonly />
-      <button style="background-color: rgb(0, 217, 255); border-radius: 8px;" id="changeNameBtn">Change name</button>
-    </div>
-
-    <textarea style="border-radius: 10px;" id="postText" rows="3" placeholder="Write a post..."></textarea>
-    <button style="background-color: black; color: white; border-radius: 20px" id="postBtn">Post</button>
-    <div id="errorBox" class="error"></div>
-
-    <button id="refreshBtn">Refresh Page</button>
-    <div id="feed"></div>
+<div id="mainApp">
+  <h2>Videx!</h2>
+  <div class="row">
+    <input id="nameDisplay" readonly />
+    <button id="changeNameBtn" style="background:#00d9ff;border-radius:8px;">Change name</button>
   </div>
+  <textarea id="postText" rows="3" placeholder="Write a post..." style="border-radius:10px;"></textarea>
+  <button id="postBtn" style="background:black;color:white;border-radius:20px;">Post</button>
+  <div id="errorBox" class="error"></div>
+  <button id="refreshBtn">Refresh Page</button>
+  <div id="feed"></div>
+</div>
 
 <script type="module">
-  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-  // Your Supabase project details
-  const supabaseUrl = "https://btpeyadbqscxejitjopi.supabase.co";
-  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0cGV5YWRicXNjeGVqaXRqb3BpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzgyMjM5NCwiZXhwIjoyMDc5Mzk4Mzk0fQ.uAg3rEnyF7WJAM20rhax2LQp1lL2sBwKb2QipVvXi-g";
-  const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseUrl = "https://btpeyadbqscxejitjopi.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0cGV5YWRicXNjeGVqaXRqb3BpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MjIzOTQsImV4cCI6MjA3OTM5ODM5NH0.u2Sj-oObFRfPWbtn-Wvr2PbJmxcciucdHcgzyiSCCTg";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-  const nameDisplay = document.getElementById("nameDisplay");
-  const changeNameBtn = document.getElementById("changeNameBtn");
-  const postText = document.getElementById("postText");
-  const postBtn = document.getElementById("postBtn");
-  const refreshBtn = document.getElementById("refreshBtn");
-  const errorBox = document.getElementById("errorBox");
-  const feedEl = document.getElementById("feed");
+const nameDisplay = document.getElementById("nameDisplay");
+const changeNameBtn = document.getElementById("changeNameBtn");
+const postText = document.getElementById("postText");
+const postBtn = document.getElementById("postBtn");
+const refreshBtn = document.getElementById("refreshBtn");
+const errorBox = document.getElementById("errorBox");
+const feedEl = document.getElementById("feed");
 
-  // Initialize name from localStorage
-  let currentUserName = (localStorage.getItem("videxName") || "").trim();
-  if (!currentUserName) {
-    // If no name, send back to login page
-    window.location.href = "login.html";
-  } else {
-    nameDisplay.value = currentUserName;
-  }
+let currentUserName = (localStorage.getItem("videxName") || "").trim();
+if (!currentUserName) window.location.href = "login.html";
+else nameDisplay.value = currentUserName;
 
-  changeNameBtn.addEventListener("click", () => {
-    const newName = prompt("Enter a new name:", currentUserName) || "";
-    const trimmed = newName.trim();
-    if (!trimmed) return;
-    currentUserName = trimmed;
-    localStorage.setItem("videxName", trimmed);
-    nameDisplay.value = trimmed;
+changeNameBtn.addEventListener("click", () => {
+  const newName = prompt("Enter new name:", currentUserName) || "";
+  const trimmed = newName.trim();
+  if (!trimmed) return;
+  currentUserName = trimmed;
+  localStorage.setItem("videxName", trimmed);
+  nameDisplay.value = trimmed;
+});
+
+postBtn.addEventListener("click", async () => {
+  clearError();
+  const text = (postText.value || "").trim();
+  if (!text) { showError("Please write something."); return; }
+  const { error } = await supabase.from("posts").insert([{ username: currentUserName, text }]);
+  if (error) { showError("Post error: "+error.message); return; }
+  postText.value = "";
+  await loadPosts();
+});
+
+refreshBtn.addEventListener("click", loadPosts);
+
+async function loadPosts() {
+  clearError();
+  feedEl.innerHTML = "<div class='post'>Loading...</div>";
+  const { data, error } = await supabase.from("posts").select("*").order("created_at",{ascending:false}).limit(100);
+  if (error) { showError("Load error: "+error.message); feedEl.innerHTML=""; return; }
+  feedEl.innerHTML = "";
+  data.forEach(post => {
+    const div = document.createElement("div");
+    div.className = "post";
+    const time = new Date(post.created_at).toLocaleString();
+    div.innerHTML = `<div class="header"><strong>${escapeHtml(post.username)}</strong><span style="color:#666">${escapeHtml(time)}</span></div><div>${escapeHtml(post.text)}</div>`;
+    feedEl.appendChild(div);
   });
+}
 
-  postBtn.addEventListener("click", async () => {
-    clearError();
-    const text = (postText.value || "").trim();
-    if (!text) {
-      showError("Please write something before posting.");
-      return;
-    }
-    const { error } = await supabase.from("posts").insert([
-      { username: currentUserName, text }
-    ]);
-    if (error) {
-      showError("Post error: " + error.message);
-      console.error("Post error:", error);
-      return;
-    }
-    postText.value = "";
-    await loadPosts();
-  });
+function showError(msg){ errorBox.textContent=msg; errorBox.style.display="block"; }
+function clearError(){ errorBox.textContent=""; errorBox.style.display="none"; }
+function escapeHtml(str){ return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;"); }
 
-  refreshBtn.addEventListener("click", loadPosts);
-
-  async function loadPosts() {
-    clearError();
-    feedEl.innerHTML = "<div class='post'>Loading...</div>";
-    const { data, error } = await supabase
-      .from("posts")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(100);
-
-    if (error) {
-      showError("Load error: " + error.message);
-      console.error("Load error:", error);
-      feedEl.innerHTML = "";
-      return;
-    }
-
-    feedEl.innerHTML = "";
-    (data || []).forEach(post => {
-      const div = document.createElement("div");
-      div.className = "post";
-      const time = new Date(post.created_at).toLocaleString();
-      div.innerHTML =
-        `<div class="header">
-           <strong>${escapeHtml(post.username || "Anonymous")}</strong>
-           <span style="color:#666">${escapeHtml(time)}</span>
-         </div>
-         <div>${escapeHtml(post.text || "")}</div>`;
-      feedEl.appendChild(div);
-    });
-  }
-
-  // Realtime: reload on inserts
-  supabase
-    .channel("public:posts:insert")
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, async () => {
-      await loadPosts();
-    })
-    .subscribe();
-
-  function showError(msg) {
-    errorBox.textContent = msg;
-    errorBox.style.display = "block";
-  }
-  function clearError() {
-    errorBox.textContent = "";
-    errorBox.style.display = "none";
-  }
-  function escapeHtml(str) {
-    return String(str)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;");
-  }
-
-  // Initial load
-  loadPosts();
+loadPosts();
 </script>
 </body>
 </html>
-
-
