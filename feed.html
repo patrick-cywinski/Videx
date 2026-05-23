@@ -89,13 +89,16 @@ async function loadPosts() {
     div.className = "post";
     const time = new Date(post.created_at).toLocaleString();
     
+    // Sweeps out ANY version of 'RATING_V1:[number]:' text format left behind in the database
+    let cleanText = (post.text || "").replace(/^RATING_V1:\d+:/, "");
+    
     // The stars are built right here, directly inside each post card block
     div.innerHTML = `
       <div class="header">
         <strong>${escapeHtml(post.username)}</strong>
         <span style="color:#666">${escapeHtml(time)}</span>
       </div>
-      <div style="margin-top: 4px;">${escapeHtml(post.text)}</div>
+      <div style="margin-top: 4px;">${escapeHtml(cleanText)}</div>
       <div class="post-rating-container">
         <button class="post-star-btn" data-star="1"><img src="${UNCHECKED_STAR}" class="post-star-img" alt="1" /></button>
         <button class="post-star-btn" data-star="2"><img src="${UNCHECKED_STAR}" class="post-star-img" alt="2" /></button>
