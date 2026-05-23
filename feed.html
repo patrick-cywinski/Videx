@@ -1,3 +1,10 @@
+I completely understand your frustration, and I am sorry for missing the mark on the layout earlier. Let's fix this right now.
+
+I have completely removed the global star rating from the top of the app. The star rating is now built **exclusively inside every single post card** in the feed. Each post card operates completely independently, allowing you to rate every message with its own 0–5 star scale. When you refresh the page, the stars naturally reset to unchecked (`IMG_2372.jpeg`), bypassing Supabase entirely as requested.
+
+Here is the exact, complete HTML code you need:
+
+```html
 <!DOCTYPE html>
 <html>
 <head>
@@ -13,11 +20,11 @@
     .post { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 10px; margin: 6px 0; }
     .header { display:flex; justify-content:space-between; }
     .error { color: #b00020; display:none; }
-    .star-rating-container { display: flex; gap: 4px; margin: 6px 0; align-items: center; }
-    .star-btn { background: none; border: none; padding: 0; width: 30px; height: 30px; cursor: pointer; margin: 0; }
-    .star-img { width: 100%; height: 100%; object-fit: contain; }
-    .post-stars { display: flex; gap: 4px; margin-top: 8px; border-top: 1px dashed #eee; padding-top: 8px; }
-    .post-star-img { width: 20px; height: 20px; object-fit: contain; }
+    
+    /* Star styling inside each individual post card */
+    .post-rating-container { display: flex; gap: 4px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #eee; align-items: center; }
+    .post-star-btn { background: none; border: none; padding: 0; width: 24px; height: 24px; cursor: pointer; margin: 0; }
+    .post-star-img { width: 100%; height: 100%; object-fit: contain; }
   </style>
 </head>
 <body>
@@ -28,16 +35,6 @@
     <button id="changeNameBtn" style="background:#00d9ff;border-radius:8px;">Change name</button>
   </div>
   <textarea id="postText" rows="3" placeholder="Write a post..." style="border-radius:10px;"></textarea>
-  
-  <div class="star-rating-container">
-    <span style="font-size: 14px; color: #555; margin-right: 4px;">Rating:</span>
-    <button class="star-btn" data-value="1"><img src="IMG_2372.jpeg" class="star-img" alt="1" /></button>
-    <button class="star-btn" data-value="2"><img src="IMG_2372.jpeg" class="star-img" alt="2" /></button>
-    <button class="star-btn" data-value="3"><img src="IMG_2372.jpeg" class="star-img" alt="3" /></button>
-    <button class="star-btn" data-value="4"><img src="IMG_2372.jpeg" class="star-img" alt="4" /></button>
-    <button class="star-btn" data-value="5"><img src="IMG_2372.jpeg" class="star-img" alt="5" /></button>
-  </div>
-
   <button id="postBtn" style="background:black;color:white;border-radius:20px;">Post</button>
   <div id="errorBox" class="error"></div>
   <button id="refreshBtn">Refresh Page</button>
@@ -58,42 +55,13 @@ const postBtn = document.getElementById("postBtn");
 const refreshBtn = document.getElementById("refreshBtn");
 const errorBox = document.getElementById("errorBox");
 const feedEl = document.getElementById("feed");
-const starButtons = document.querySelectorAll(".star-btn");
 
 let currentUserName = (localStorage.getItem("videxName") || "").trim();
 if (!currentUserName) window.location.href = "login.html";
 else nameDisplay.value = currentUserName;
 
-let selectedRating = 0;
-
 const UNCHECKED_STAR = "IMG_2372.jpeg";
 const CHECKED_STAR = "IMG_2373.jpeg";
-
-starButtons.forEach(button => {
-  button.addEventListener("click", () => {
-    const clickedValue = parseInt(button.getAttribute("data-value"), 10);
-    
-    if (selectedRating === clickedValue) {
-      selectedRating = 0;
-    } else {
-      selectedRating = clickedValue;
-    }
-    
-    updateInputStars();
-  });
-});
-
-function updateInputStars() {
-  starButtons.forEach(button => {
-    const val = parseInt(button.getAttribute("data-value"), 10);
-    const img = button.querySelector(".star-img");
-    if (val <= selectedRating) {
-      img.src = CHECKED_STAR;
-    } else {
-      img.src = UNCHECKED_STAR;
-    }
-  });
-}
 
 changeNameBtn.addEventListener("click", () => {
   const newName = prompt("Enter new name:", currentUserName) || "";
@@ -108,16 +76,9 @@ postBtn.addEventListener("click", async () => {
   clearError();
   const text = (postText.value || "").trim();
   if (!text) { showError("Please write something."); return; }
-  
-  // Custom prefix storage strategy to safely handle regular text table properties 
-  const payloadText = "RATING_V1:" + selectedRating + ":" + text;
-
-  const { error } = await supabase.from("posts").insert([{ username: currentUserName, text: payloadText }]);
+  const { error } = await supabase.from("posts").insert([{ username: currentUserName, text }]);
   if (error) { showError("Post error: "+error.message); return; }
-  
   postText.value = "";
-  selectedRating = 0;
-  updateInputStars();
   await loadPosts();
 });
 
@@ -131,34 +92,54 @@ async function loadPosts() {
   feedEl.innerHTML = "";
   
   data.forEach(post => {
-    let displayBody = post.text || "";
-    let postRating = 0;
-
-    // Check if the post uses our custom text tracking format
-    if (displayBody.startsWith("RATING_V1:")) {
-      const parts = displayBody.split(":");
-      // parts[0] is 'RATING_V1', parts[1] is the rating value
-      postRating = parseInt(parts[1], 10) || 0;
-      // Re-join the remaining parts to construct the original post body safely
-      displayBody = parts.slice(2).join(":");
-    }
-
     const div = document.createElement("div");
     div.className = "post";
     const time = new Date(post.created_at).toLocaleString();
     
-    // Only compile star container under posts if rating is above 0
-    let starsHtml = '';
-    if (postRating > 0) {
-      starsHtml = '<div class="post-stars">';
-      for (let i = 1; i <= 5; i++) {
-        const starSrc = i <= postRating ? CHECKED_STAR : UNCHECKED_STAR;
-        starsHtml += `<img src="${starSrc}" class="post-star-img" alt="${i} star" />`;
-      }
-      starsHtml += '</div>';
-    }
+    // The stars are built right here, directly inside each post card block
+    div.innerHTML = `
+      <div class="header">
+        <strong>${escapeHtml(post.username)}</strong>
+        <span style="color:#666">${escapeHtml(time)}</span>
+      </div>
+      <div style="margin-top: 4px;">${escapeHtml(post.text)}</div>
+      <div class="post-rating-container">
+        <button class="post-star-btn" data-star="1"><img src="${UNCHECKED_STAR}" class="post-star-img" alt="1" /></button>
+        <button class="post-star-btn" data-star="2"><img src="${UNCHECKED_STAR}" class="post-star-img" alt="2" /></button>
+        <button class="post-star-btn" data-star="3"><img src="${UNCHECKED_STAR}" class="post-star-img" alt="3" /></button>
+        <button class="post-star-btn" data-star="4"><img src="${UNCHECKED_STAR}" class="post-star-img" alt="4" /></button>
+        <button class="post-star-btn" data-star="5"><img src="${UNCHECKED_STAR}" class="post-star-img" alt="5" /></button>
+      </div>
+    `;
 
-    div.innerHTML = `<div class="header"><strong>${escapeHtml(post.username)}</strong><span style="color:#666">${escapeHtml(time)}</span></div><div>${escapeHtml(displayBody)}</div>${starsHtml}`;
+    // Local variable tracker unique to this specific card instance
+    let currentPostRating = 0;
+    const postStarButtons = div.querySelectorAll(".post-star-btn");
+
+    postStarButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const targetVal = parseInt(btn.getAttribute("data-star"), 10);
+        
+        // If they click the same star level again, it toggles back down to 0
+        if (currentPostRating === targetVal) {
+          currentPostRating = 0;
+        } else {
+          currentPostRating = targetVal;
+        }
+
+        // Apply checked/unchecked image paths strictly within this card element
+        postStarButtons.forEach(innerBtn => {
+          const checkVal = parseInt(innerBtn.getAttribute("data-star"), 10);
+          const img = innerBtn.querySelector(".post-star-img");
+          if (checkVal <= currentPostRating) {
+            img.src = CHECKED_STAR;
+          } else {
+            img.src = UNCHECKED_STAR;
+          }
+        });
+      });
+    });
+
     feedEl.appendChild(div);
   });
 }
@@ -170,3 +151,6 @@ function escapeHtml(str){ return String(str).replaceAll("&","&amp;").replaceAll(
 loadPosts();
 </script>
 </body>
+</html>
+
+```
