@@ -16,7 +16,7 @@
     .star-rating-container { display: flex; gap: 4px; margin: 6px 0; align-items: center; }
     .star-btn { background: none; border: none; padding: 0; width: 30px; height: 30px; cursor: pointer; margin: 0; }
     .star-img { width: 100%; height: 100%; object-fit: contain; }
-    .post-stars { display: flex; gap: 4px; margin-top: 6px; }
+    .post-stars { display: flex; gap: 4px; margin-top: 8px; border-top: 1px dashed #eee; padding-top: 8px; }
     .post-star-img { width: 20px; height: 20px; object-fit: contain; }
   </style>
 </head>
@@ -108,8 +108,13 @@ postBtn.addEventListener("click", async () => {
   clearError();
   const text = (postText.value || "").trim();
   if (!text) { showError("Please write something."); return; }
-  const { error } = await supabase.from("posts").insert([{ username: currentUserName, text, rating: selectedRating }]);
+  
+  // Custom prefix storage strategy to safely handle regular text table properties 
+  const payloadText = "RATING_V1:" + selectedRating + ":" + text;
+
+  const { error } = await supabase.from("posts").insert([{ username: currentUserName, text: payloadText }]);
   if (error) { showError("Post error: "+error.message); return; }
+  
   postText.value = "";
   selectedRating = 0;
   updateInputStars();
@@ -124,20 +129,36 @@ async function loadPosts() {
   const { data, error } = await supabase.from("posts").select("*").order("created_at",{ascending:false}).limit(100);
   if (error) { showError("Load error: "+error.message); feedEl.innerHTML=""; return; }
   feedEl.innerHTML = "";
+  
   data.forEach(post => {
+    let displayBody = post.text || "";
+    let postRating = 0;
+
+    // Check if the post uses our custom text tracking format
+    if (displayBody.startsWith("RATING_V1:")) {
+      const parts = displayBody.split(":");
+      // parts[0] is 'RATING_V1', parts[1] is the rating value
+      postRating = parseInt(parts[1], 10) || 0;
+      // Re-join the remaining parts to construct the original post body safely
+      displayBody = parts.slice(2).join(":");
+    }
+
     const div = document.createElement("div");
     div.className = "post";
     const time = new Date(post.created_at).toLocaleString();
     
-    const postRating = post.rating || 0;
-    let starsHtml = '<div class="post-stars">';
-    for (let i = 1; i <= 5; i++) {
-      const starSrc = i <= postRating ? CHECKED_STAR : UNCHECKED_STAR;
-      starsHtml += `<img src="${starSrc}" class="post-star-img" alt="${i} star" />`;
+    // Only compile star container under posts if rating is above 0
+    let starsHtml = '';
+    if (postRating > 0) {
+      starsHtml = '<div class="post-stars">';
+      for (let i = 1; i <= 5; i++) {
+        const starSrc = i <= postRating ? CHECKED_STAR : UNCHECKED_STAR;
+        starsHtml += `<img src="${starSrc}" class="post-star-img" alt="${i} star" />`;
+      }
+      starsHtml += '</div>';
     }
-    starsHtml += '</div>';
 
-    div.innerHTML = `<div class="header"><strong>${escapeHtml(post.username)}</strong><span style="color:#666">${escapeHtml(time)}</span></div><div>${escapeHtml(post.text)}</div>${starsHtml}`;
+    div.innerHTML = `<div class="header"><strong>${escapeHtml(post.username)}</strong><span style="color:#666">${escapeHtml(time)}</span></div><div>${escapeHtml(displayBody)}</div>${starsHtml}`;
     feedEl.appendChild(div);
   });
 }
