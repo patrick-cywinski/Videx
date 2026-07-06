@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>Videx - Profile</title>
+  
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+    #profileApp { max-width: 700px; margin: auto; }
+    
+    .profile-header { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; }
+    /* Increased profile picture dimensions here */
+    .profile-pic { width: 120px; height: 120px; object-fit: cover; border-radius: 0px; background: #ddd; }
+    .profile-name { font-size: 24px; font-weight: bold; margin: 0; }
+    
+    hr { border: 0; height: 1px; background: #ddd; margin-bottom: 20px; }
+    
+    .post { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 10px; margin: 6px 0; }
+    .header { display:flex; justify-content:space-between; }
+    .error { color: #b00020; display:none; }
+    
+    .post-rating-container { display: flex; gap: 4px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #eee; align-items: center; }
+    .post-star-btn { background: none; border: none; padding: 0; width: 24px; height: 24px; cursor: pointer; margin: 0; }
+    .post-star-img { width: 100%; height: 100%; object-fit: contain; }
+    .nav-link { display: inline-block; margin-bottom: 15px; color: #0066cc; text-decoration: none; }
+    .nav-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div id="profileApp">
+  <a href="feed.html" class="nav-link">&larr; Back to Feed</a>
+  
+  <div class="profile-header">
+    <img id="pfpDisplay" class="profile-pic" alt="Profile Picture">
+    <h2 id="userHeading" class="profile-name">Loading...</h2>
+  </div>
+  
+  <hr>
+  
+  <div id="errorBox" class="error" style="display: none;"></div>
+  <div id="profileFeed"></div>
+</div>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+const supabaseUrl = "https://btpeyadbqscxejitjopi.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0cGV5YWRicXNjeGVqaXRqb3BpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MjIzOTQsImV4cCI6MjA3OTM5ODM5NH0.u2Sj-oObFRfPWbtn-Wvr2PbJmxcciucdHcgzyiSCCTg";
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+const pfpDisplay = document.getElementById("pfpDisplay");
+const userHeading = document.getElementById("userHeading");
+const profileFeed = document.getElementById("profileFeed");
+const errorBox = document.getElementById("errorBox");
+
+// Get the username parameter from the page URL
+const urlParams = new URLSearchParams(window.location.search);
+const targetUser = (urlParams.get("user") || "").trim();
+
+// Fallback to logged-in user if no query parameter is supplied
+let loggedInUser = (localStorage.getItem("videxName") || "").trim();
+if (!targetUser && !loggedInUser) {
+  window.location.href = "login.html";
+}
+const profileUsername = targetUser || loggedInUser;
+
+// List of profile image names to randomly select from
+const pfpImages = ["aqua.png", "blue.png", "green.png", "purple.png", "pink.png", "orange.png", "yellow.png", "red.png"];
+const randomPfp = pfpImages[Math.floor(Math.random() * pfpImages.length)];
+
+// Set up UI visuals
+pfpDisplay.src = randomPfp;
+userHeading.textContent = profileUsername;
+
+const UNCHECKED_STAR = "IMG_2372.jpeg";
+const CHECKED_STAR = "IMG_2373.jpeg";
+
+async function loadProfilePosts() {
+  clearError();
+  profileFeed.innerHTML = "<div class='post'>Loading user posts...</div>";
+  
+  // Fetch posts strictly filtering by the clicked username
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("username", profileUsername)
+    .order("created_at", { ascending: false })
+    .limit(100);
+    
+  if (error) { showError("Load error: " + error.message); profileFeed.innerHTML = ""; return; }
+  if (!data || data.length === 0) { profileFeed.innerHTML = "<div class='post'>No posts found for this user.</div>"; return; }
+  
+  profileFeed.innerHTML = "";
+  
+  data.forEach(post => {
+    const div = document.createElement("div");
+    div.className = "post";
+    const time = new Date(post.created_at).toLocaleString();
+    let cleanText = (post.text || "").replace(/^RATING_V1:\d+:/, "");
+    
+    div.innerHTML = `
+      <div class="header">
+        <strong>${escapeHtml(post.username)}</strong>
+        <span style="color:#666">${escapeHtml(time)}</span>
+      </div>
+      <div style="margin-top: 4px;">${escapeHtml(cleanText)}</div>
+      <div class="post-rating-container">
+        <button class="post-star-btn" data-star="1"><img src="${UNCHECKED_STAR}" class="post-star-img" alt="1" /></button>
+        <button class="post-star-btn" data-star="2"><img src="${UNCHECKED_STAR}" class="post-star-img" alt="2" /></button>
+        <button class="post-star-btn" data-star="3"><img src="${UNCHECKED_STAR}" class="post-star-img" alt="3" /></button>
+        <button class="post-star-btn" data-star="4"><img src="${UNCHECKED_STAR}" class="post-star-img" alt="4" /></button>
+        <button class="post-star-btn" data-star="5"><img src="${UNCHECKED_STAR}" class="post-star-img" alt="5" /></button>
+      </div>
+    `;
+
+    let currentPostRating = 0;
+    const postStarButtons = div.querySelectorAll(".post-star-btn");
+
+    postStarButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const targetVal = parseInt(btn.getAttribute("data-star"), 10);
+        if (currentPostRating === targetVal) {
+          currentPostRating = 0;
+        } else {
+          currentPostRating = targetVal;
+        }
+
+        postStarButtons.forEach(innerBtn => {
+          const checkVal = parseInt(innerBtn.getAttribute("data-star"), 10);
+          const img = innerBtn.querySelector(".post-star-img");
+          if (checkVal <= currentPostRating) {
+            img.src = CHECKED_STAR;
+          } else {
+            img.src = UNCHECKED_STAR;
+          }
+        });
+      });
+    });
+
+    profileFeed.appendChild(div);
+  });
+}
+
+function showError(msg){ errorBox.textContent=msg; errorBox.style.display="block"; }
+function clearError(){ errorBox.textContent=""; errorBox.style.display="none"; }
+function escapeHtml(str){ return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;"); }
+
+loadProfilePosts();
+</script>
+</body></html>
