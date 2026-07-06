@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html>
-<head>
+<!-- saved from url=(0050)https://patrick-cywinski.github.io/Videx/feed.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <title>Videx - Home.</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
     body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
     #mainApp { max-width: 700px; margin: auto; }
@@ -18,20 +18,37 @@
     .post-rating-container { display: flex; gap: 4px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #eee; align-items: center; }
     .post-star-btn { background: none; border: none; padding: 0; width: 24px; height: 24px; cursor: pointer; margin: 0; }
     .post-star-img { width: 100%; height: 100%; object-fit: contain; }
+    
+    /* Styling for the username links */
+    .profile-link { color: #0066cc; text-decoration: none; font-weight: bold; }
+    .profile-link:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
 <div id="mainApp">
   <h2>Videx!</h2>
   <div class="row">
-    <input id="nameDisplay" readonly />
+    <input id="nameDisplay" readonly="">
     <button id="changeNameBtn" style="background:#00d9ff;border-radius:8px;">Change name</button>
   </div>
   <textarea id="postText" rows="3" placeholder="Write a post..." style="border-radius:10px;"></textarea>
   <button id="postBtn" style="background:black;color:white;border-radius:20px;">Post</button>
-  <div id="errorBox" class="error"></div>
+  <div id="errorBox" class="error" style="display: none;"></div>
   <button id="refreshBtn">Refresh Page</button>
-  <div id="feed"></div>
+  <div id="feed"><div class="post">
+      <div class="header">
+        <strong>Patrick.</strong>
+        <span style="color:#666">06/07/2026, 10:40:11</span>
+      </div>
+      <div style="margin-top: 4px;">veganism</div>
+      <div class="post-rating-container">
+        <button class="post-star-btn" data-star="1"><img src="./feed_files/IMG_2372.jpeg" class="post-star-img" alt="1"></button>
+        <button class="post-star-btn" data-star="2"><img src="./feed_files/IMG_2372.jpeg" class="post-star-img" alt="2"></button>
+        <button class="post-star-btn" data-star="3"><img src="./feed_files/IMG_2372.jpeg" class="post-star-img" alt="3"></button>
+        <button class="post-star-btn" data-star="4"><img src="./feed_files/IMG_2372.jpeg" class="post-star-img" alt="4"></button>
+        <button class="post-star-btn" data-star="5"><img src="./feed_files/IMG_2372.jpeg" class="post-star-img" alt="5"></button>
+      </div>
+    </div></div>
 </div>
 
 <script type="module">
@@ -95,7 +112,7 @@ async function loadPosts() {
     // The stars are built right here, directly inside each post card block
     div.innerHTML = `
       <div class="header">
-        <strong>${escapeHtml(post.username)}</strong>
+        <strong><a href="profile.html?user=${encodeURIComponent(post.username)}" class="profile-link">${escapeHtml(post.username)}</a></strong>
         <span style="color:#666">${escapeHtml(time)}</span>
       </div>
       <div style="margin-top: 4px;">${escapeHtml(cleanText)}</div>
@@ -146,5 +163,5 @@ function escapeHtml(str){ return String(str).replaceAll("&","&amp;").replaceAll(
 
 loadPosts();
 </script>
-</body>
-</html>
+
+</body></html>
